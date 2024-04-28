@@ -15,9 +15,8 @@ public class Scanner {
     private int current = 0; // Points to the current char in the source.
     private int line = 1;
 
-    private static final Map<String, TokenType> keywords;
+    private static final Map<String, TokenType> keywords = new HashMap<>();
     static {
-        keywords = new HashMap<>();
         keywords.put("and", AND);
         keywords.put("or", OR);
         keywords.put("else", ELSE);
