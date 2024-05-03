@@ -8,6 +8,7 @@ public class GenerateAst {
     static final String base_name = "Expr";
     static final List<String> types = Arrays.asList(
         "Binary   : Expr left, Token operator, Expr right",
+        "Ternary  : Expr condition, Expr if_true, Expr otherwise",
         "Grouping : Expr expression",
         "Literal  : Object value",
         "Unary    : Token operator, Expr right");
@@ -33,6 +34,9 @@ public class GenerateAst {
         writer.println("import java.util.List;");
         writer.println();
         writer.println("abstract class " + base_name + " {");
+
+        writer.println();
+        define_to_string(writer);
 
         writer.println();
         define_visitor(writer);
@@ -81,6 +85,14 @@ public class GenerateAst {
 
     static String get_visitor_func_name(String type_name) {
         return "visit_" + type_name.toLowerCase() + "_" + base_name.toLowerCase();
+    }
+
+    static void define_to_string(PrintWriter writer) {
+        writer.println("\t@Override");
+        writer.println("\tpublic String toString() {");
+        writer.println("\t\tAstPrinter printer = new AstPrinter();");
+        writer.println("\t\treturn printer.to_string(this);");
+        writer.println("\t}");
     }
 
     static void define_visitor(PrintWriter writer) {

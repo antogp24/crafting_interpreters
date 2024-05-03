@@ -1,2 +1,5 @@
 jlox/bin/*
+jlox/out/*
 jlox/src/Expr.java
+jlox/.idea/*
+jlox/jlox.iml

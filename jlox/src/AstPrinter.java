@@ -11,11 +11,16 @@ class AstPrinter implements Expr.Visitor<String> {
             new Expr.Grouping(new Expr.Literal(45.67)));
 
         AstPrinter printer = new AstPrinter();
-        String representation = printer.print(expr);
+        String representation = printer.to_string(expr);
         System.out.println(representation);
     }
 
-    String print(Expr expr) {
+    static void print(Expr expr) {
+        AstPrinter printer = new AstPrinter();
+        System.out.println(printer.to_string(expr));
+    }
+
+    String to_string(Expr expr) {
         return expr.accept(this);
     }
 
@@ -24,7 +29,8 @@ class AstPrinter implements Expr.Visitor<String> {
         builder.append("(").append(name);
         for (Expr expr : exprs) {
             builder.append(" ");
-            builder.append(print(expr));
+            String expr_str = to_string(expr);
+            builder.append(expr_str);
         }
         builder.append(")");
         return builder.toString();
@@ -33,6 +39,12 @@ class AstPrinter implements Expr.Visitor<String> {
     @Override
     public String visit_binary_expr(Expr.Binary expr) {
         return parenthesize(expr.operator.lexeme, expr.left, expr.right);
+    }
+
+    @Override
+    public String visit_ternary_expr(Expr.Ternary expr) {
+        final Expr colon = new Expr.Literal(":");
+        return parenthesize("?", expr.condition, expr.if_true, colon, expr.otherwise);
     }
 
     @Override

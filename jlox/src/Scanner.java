@@ -56,17 +56,39 @@ public class Scanner {
             case ')': add_token(RIGHT_PAREN); break;
             case '{': add_token(LEFT_BRACE); break;
             case '}': add_token(RIGHT_BRACE); break;
+            case '&': add_token(match('&') ? AND : BITWISE_AND); break;
+            case '|': add_token(match('|') ? AND : BITWISE_OR); break;
+            case '^': add_token(BITWISE_XOR); break;
+            case '~': add_token(BITWISE_NOT); break;
             case ',': add_token(COMMA); break;
             case '.': add_token(DOT); break;
             case '-': add_token(MINUS); break;
             case '+': add_token(PLUS); break;
             case ';': add_token(SEMICOLON); break;
             case '*': add_token(STAR); break;
+            case '?': add_token(QUESTION_MARK); break;
+            case ':': add_token(COLON); break;
             case '=': add_token(match('=') ? EQUAL_EQUAL : EQUAL); break;
             case '!': add_token(match('=') ? BANG_EQUAL : BANG); break;
-            case '<': add_token(match('=') ? LESS_EQUAL : LESS); break;
-            case '>': add_token(match('=') ? GREATER_EQUAL : GREATER); break;
-            case '/': 
+            case '<': {
+                if (match('=')) {
+                    add_token(LESS_EQUAL);
+                } else if (match('<')) {
+                    add_token(LEFT_SHIFT);
+                } else {
+                    add_token(LESS);
+                }
+            } break;
+            case '>': {
+                if (match('=')) {
+                    add_token(GREATER_EQUAL);
+                } else if (match('>')) {
+                    add_token(RIGHT_SHIFT);
+                } else {
+                    add_token(GREATER);
+                }
+            } break;
+            case '/':
                 if (match('/')) {
                     // ignore single line comment
                     while (peek() != '\n' && !is_at_end()) current += 1;
@@ -89,7 +111,7 @@ public class Scanner {
             default:
                 if (is_digit(c)) {
                     scan_number_literal();
-                } else if (is_alpha(c)){
+                } else if (is_alpha(c)) {
                     scan_identifier();
                 } else {
                     Lox.error(line, "Unexpected character.");
@@ -167,6 +189,7 @@ public class Scanner {
         while (is_digit(peek())) current += 1;
 
         if (peek() == '.' && is_digit(peek_next())) {
+            advance();
             while (is_digit(peek())) current += 1;
         }
 
@@ -175,7 +198,9 @@ public class Scanner {
     }
 
     void scan_identifier() {
-        while (is_alpha_numeric(peek())) current += 1;
+        while (is_alpha_numeric(peek())) {
+            current += 1;
+        }
 
         String name = source.substring(start, current);
         TokenType type = keywords.get(name);

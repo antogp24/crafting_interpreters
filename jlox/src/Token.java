@@ -13,7 +13,11 @@ public class Token {
         this.line = line;
     }
 
-    public String to_string() {
-        return type + " " + lexeme + " " + literal;
+    @Override
+    public String toString() {
+        if (type == TokenType.STRING) {
+            return "(" + type + " " + lexeme + " " + literal + ")";
+        }
+        return "(" + type + " '" + lexeme + "' " + literal + ")";
     }
 }

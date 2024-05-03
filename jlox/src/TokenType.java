@@ -11,6 +11,12 @@ enum TokenType {
     GREATER, GREATER_EQUAL,  //  >  >=
     LESS, LESS_EQUAL,        //  <  <=
 
+    BITWISE_AND, BITWISE_OR,  // &   |
+    BITWISE_NOT, BITWISE_XOR, // ~   ^
+    LEFT_SHIFT, RIGHT_SHIFT,  // <<  >>
+
+    COLON, QUESTION_MARK, // ? :
+
     IDENTIFIER, STRING, NUMBER,
 
     AND, CLASS, ELSE, FALSE, FUN, FOR, IF, NIL, OR,
