@@ -15,9 +15,11 @@ public class Token {
 
     @Override
     public String toString() {
+        String last_part = (literal != null ? " " + literal : "");
+
         if (type == TokenType.STRING) {
-            return "(" + type + " " + lexeme + " " + literal + ")";
+            return "(" + type + " " + lexeme + last_part + ")";
         }
-        return "(" + type + " '" + lexeme + "' " + literal + ")";
+        return "(" + type + " '" + lexeme + "'" + last_part + ")";
     }
 }

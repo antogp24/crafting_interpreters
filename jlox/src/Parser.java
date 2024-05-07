@@ -1,6 +1,7 @@
 package src;
 
 import java.util.List;
+import java.util.ArrayList;
 import static src.TokenType.*;
 
 class Parser {
@@ -13,7 +14,17 @@ class Parser {
         this.tokens = tokens;
     }
 
-    Expr parse() {
+    List<Stmt> parse_statements() {
+        List<Stmt> statements = new ArrayList<>();
+
+        while (!is_at_end()) {
+            statements.add(declaration());
+        }
+
+        return statements;
+    }
+
+    Expr parse_expression() {
         try {
             return expression();
         } catch (ParseError e) {
@@ -21,17 +32,83 @@ class Parser {
         }
     }
 
+    private Stmt declaration() {
+        try {
+            if (match(VAR)) return var_declaration();
+            return statement();
+        } catch (ParseError error) {
+            synchronize();
+            return null;
+        }
+    }
+
+    private Stmt var_declaration() {
+        Token name = consume(IDENTIFIER, "Expect variable name.");
+        Expr initializer = null;
+
+        if (match(EQUAL)) {
+            initializer = expression();
+        }
+        consume(SEMICOLON, "Expect ';' after initializer.");
+
+        return new Stmt.Var(name, initializer);
+    }
+
+    private Stmt statement() {
+        if (match(PRINT)) return print_statement();
+        if (match(LEFT_BRACE)) return new Stmt.Block(block());
+        return expression_statement();
+    }
+
+    private Stmt print_statement() {
+        Expr value = expression();
+        consume(SEMICOLON, "Expected ';' after the printed value.");
+        return new Stmt.Print(value);
+    }
+
+    private Stmt expression_statement() {
+        Expr value = parse_expression();
+        consume(SEMICOLON, "Expected ';' after the expression statement.");
+        return new Stmt.Expression(value);
+    }
+
+    private List<Stmt> block() {
+        List<Stmt> statements = new ArrayList<>();
+        while (!check(RIGHT_BRACE) && !is_at_end()) {
+            statements.add(declaration());
+        }
+        consume(RIGHT_BRACE, "Expected '}' to end the block statement.");
+        return statements;
+    }
+
     private Expr expression() {
         return comma_operator();
     }
 
     private Expr comma_operator() {
-        Expr expr = equality();
+        Expr expr = assignment();
 
         while (match(COMMA)) {
-            expr = equality();
+            expr = assignment();
         }
 
+        return expr;
+    }
+
+    private Expr assignment() {
+        Expr expr = equality();
+
+        if (match(EQUAL)) {
+            Token equals = previous();
+            Expr value = assignment();
+
+            if (expr instanceof Expr.Variable) {
+                Token name = ((Expr.Variable)expr).name;
+                return new Expr.Assign(name, value);
+            }
+
+            error(equals, "Invalid assignment target '" + expr.toString() + "'.");
+        }
         return expr;
     }
 
@@ -134,6 +211,10 @@ class Parser {
 
         if (match(NUMBER, STRING)) {
             return new Expr.Literal(previous().literal);
+        }
+
+        if (match(IDENTIFIER)) {
+            return new Expr.Variable(previous());
         }
 
         if (match(LEFT_PAREN)) {

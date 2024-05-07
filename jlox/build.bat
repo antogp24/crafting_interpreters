@@ -1,6 +1,7 @@
 @echo off
 
-del src\Expr.java
+del /q src\Expr.java
+del /q src\Stmt.java
 javac -d bin -sourcepath . GenerateAst.java
 if %ERRORLEVEL%==0 java -cp bin GenerateAst src
 

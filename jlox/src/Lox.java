@@ -10,9 +10,11 @@ import java.util.List;
 
 public class Lox {
 
+    static private final Interpreter interpreter = new Interpreter();
     static boolean had_error = false;
+    static boolean had_runtime_error = false;
 
-    public static void main(String args[]) throws IOException {
+    public static void main(String[] args) throws IOException {
         if (args.length > 1) {
             System.out.println("Usage: jlox [script]");
             System.exit(64);
@@ -28,6 +30,7 @@ public class Lox {
         run(new String(bytes, Charset.defaultCharset()));
 
         if (had_error) System.exit(65);
+        if (had_runtime_error) System.exit(70);
     }
 
     private static void run_prompt() throws IOException {
@@ -59,16 +62,34 @@ public class Lox {
         System.out.println("} ");
 
         Parser parser = new Parser(tokens);
-        Expr expression = parser.parse();
-        AstPrinter.print(expression);
+        List<Stmt> statements = parser.parse_statements();
+        for (Stmt stmt : statements) {
+            if (stmt instanceof Stmt.Expression) {
+                Expr expr = ((Stmt.Expression)stmt).expression;
+                System.out.print("Ast Expr: ");
+                AstPrinter.print(expr);
+            }
+            if (stmt instanceof Stmt.Print) {
+                Expr expr = ((Stmt.Print)stmt).expression;
+                System.out.print("Ast Print: ");
+                AstPrinter.print(expr);
+            }
+        }
+
+        interpreter.interpret(statements);
     }
     
     static void error(int line, String message) {
         report(line, "", message);
     }
 
+    static void runtime_error(RuntimeLoxError error) {
+        System.err.println(error.getMessage() + "\n[line " + error.token.line + "]");
+        had_runtime_error = true;
+    }
+
     static void report(int line, String where, String message) {
-        System.err.printf("[%i] Error%s: %s\n", line, where, message);
+        System.err.printf("[line %d] Error%s: %s\n", line, where, message);
         had_error = true;
     }
 

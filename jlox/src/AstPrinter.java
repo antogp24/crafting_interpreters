@@ -2,19 +2,6 @@ package src;
 
 class AstPrinter implements Expr.Visitor<String> {
 
-    public static void demo() {
-        Expr expr = new Expr.Binary(
-            new Expr.Unary(
-                new Token(TokenType.MINUS, "-", null, 1),
-                new Expr.Literal(123)),
-            new Token(TokenType.STAR, "*", null, 1),
-            new Expr.Grouping(new Expr.Literal(45.67)));
-
-        AstPrinter printer = new AstPrinter();
-        String representation = printer.to_string(expr);
-        System.out.println(representation);
-    }
-
     static void print(Expr expr) {
         AstPrinter printer = new AstPrinter();
         System.out.println(printer.to_string(expr));
@@ -34,6 +21,11 @@ class AstPrinter implements Expr.Visitor<String> {
         }
         builder.append(")");
         return builder.toString();
+    }
+
+    @Override
+    public String visit_assign_expr(Expr.Assign expr) {
+        return parenthesize("'" + expr.name.lexeme + "' = ", expr.value);
     }
 
     @Override
@@ -57,11 +49,19 @@ class AstPrinter implements Expr.Visitor<String> {
         if (expr.value == null) {
             return "nil";
         }
+        if (expr.value instanceof String) {
+            return "\"" + expr.value + "\"";
+        }
         return expr.value.toString();
     }
 
     @Override
     public String visit_unary_expr(Expr.Unary expr) {
         return parenthesize(expr.operator.lexeme, expr.right);
+    }
+
+    @Override
+    public String visit_variable_expr(Expr.Variable expr) {
+        return "(var " + expr.name.lexeme + ")";
     }
 }
