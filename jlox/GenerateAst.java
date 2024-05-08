@@ -19,6 +19,7 @@ public class GenerateAst {
             "Ternary  : Expr condition, Expr if_true, Expr otherwise",
             "Grouping : Expr expression",
             "Literal  : Object value",
+            "Logical  : Expr left, Token operator, Expr right",
             "Unary    : Token operator, Expr right",
             "Variable : Token name"
         ));
@@ -26,8 +27,12 @@ public class GenerateAst {
         define_ast(out_dir, "Stmt", Arrays.asList(
             "Block       : List<Stmt> statements",
             "Expression  : Expr expression",
-            "Print       : Expr expression",
-            "Var         : Token name, Expr initializer"
+            "If          : Expr condition, Stmt then_branch," +
+                         " Stmt else_branch",
+            "Print       : Expr expression, boolean newline",
+            "Var         : Token name, Expr initializer",
+            "While       : Expr condition, Stmt body",
+            "Break       : "
         ));
     }
 
@@ -79,7 +84,9 @@ public class GenerateAst {
 
         String[] individual_fields = fields.split(",");
         for (String field : individual_fields) {
-            String name = field.trim().split(" ")[1];
+            String[] parts = field.trim().split(" ");
+            if (parts.length != 2) continue;
+            String name = parts[1];
             writer.println("\t\t\tthis." + name + " = " + name + ";");
         }
         writer.println("\t\t}");
@@ -90,10 +97,11 @@ public class GenerateAst {
         writer.println("\t\t<R> R accept(Visitor<R> visitor) {");
         writer.println("\t\t\treturn visitor." + get_visitor_func_name(class_name, base_name) + "(this);");
         writer.println("\t\t}");
-        writer.println();
 
         // Constant fields.
+        writer.println();
         for (String field : individual_fields) {
+            if (field.trim().isEmpty()) continue;
             writer.println("\t\tfinal " + field.trim() + ";");
         }
         writer.println("\t}");

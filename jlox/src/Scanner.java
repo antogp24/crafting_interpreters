@@ -18,20 +18,24 @@ public class Scanner {
     private static final Map<String, TokenType> keywords = new HashMap<>();
     static {
         keywords.put("and", AND);
-        keywords.put("or", OR);
-        keywords.put("else", ELSE);
-        keywords.put("if", IF);
-        keywords.put("false", FALSE);
-        keywords.put("true", TRUE);
+        keywords.put("break", BREAK);
         keywords.put("class", CLASS);
-        keywords.put("while", WHILE);
+        keywords.put("do", DO);
+        keywords.put("else", ELSE);
+        keywords.put("false", FALSE);
         keywords.put("for", FOR);
         keywords.put("fun", FUN);
+        keywords.put("if", IF);
+        keywords.put("nil", NIL);
+        keywords.put("or", OR);
         keywords.put("print", PRINT);
+        keywords.put("println", PRINTLN);
         keywords.put("return", RETURN);
         keywords.put("super", SUPER);
         keywords.put("this", THIS);
+        keywords.put("true", TRUE);
         keywords.put("var", VAR);
+        keywords.put("while", WHILE);
     }
 
     Scanner(String source) {
@@ -57,7 +61,7 @@ public class Scanner {
             case '{': add_token(LEFT_BRACE); break;
             case '}': add_token(RIGHT_BRACE); break;
             case '&': add_token(match('&') ? AND : BITWISE_AND); break;
-            case '|': add_token(match('|') ? AND : BITWISE_OR); break;
+            case '|': add_token(match('|') ? OR : BITWISE_OR); break;
             case '^': add_token(BITWISE_XOR); break;
             case '~': add_token(BITWISE_NOT); break;
             case ',': add_token(COMMA); break;
@@ -170,6 +174,15 @@ public class Scanner {
     void scan_string_literal() {
         while (peek() != '\"' && !is_at_end()) {
             if (peek() == '\n') this.line += 1;
+            if (peek() == '\\') {
+                current += 1;
+                switch (peek()) {
+                    case 't': case 'b': case 'n': case 'r': case 'f': case '\'': case '\"': case '\\':
+                        break;
+                    default:
+                        Lox.error(line, "Unrecognized escape sequence \\" + peek() + ".");
+                }
+            }
             current += 1;
         }
 

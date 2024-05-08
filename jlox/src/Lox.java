@@ -11,6 +11,7 @@ import java.util.List;
 public class Lox {
 
     static private final Interpreter interpreter = new Interpreter();
+    static boolean REPL;
     static boolean had_error = false;
     static boolean had_runtime_error = false;
 
@@ -19,8 +20,10 @@ public class Lox {
             System.out.println("Usage: jlox [script]");
             System.exit(64);
         } else if (args.length == 1) {
+            Lox.REPL = false;
             run_file(args[0]);
         } else {
+            Lox.REPL = true;
             run_prompt();
         }
     }
@@ -55,24 +58,27 @@ public class Lox {
 
         if (had_error) return;
 
-        System.out.print("Tokens: { ");
-        for (Token token : tokens) {
-            System.out.print(token.toString() + " ");
+        if (Lox.REPL) {
+            System.out.print("Tokens: { ");
+            for (Token token : tokens) {
+                System.out.print(token.toString() + " ");
+            }
+            System.out.println("} ");
         }
-        System.out.println("} ");
 
         Parser parser = new Parser(tokens);
         List<Stmt> statements = parser.parse_statements();
+
+        if (had_error) return;
+
         for (Stmt stmt : statements) {
-            if (stmt instanceof Stmt.Expression) {
-                Expr expr = ((Stmt.Expression)stmt).expression;
+            if (Lox.REPL && stmt instanceof Stmt.Expression stmt_expr) {
                 System.out.print("Ast Expr: ");
-                AstPrinter.print(expr);
+                AstPrinter.print(stmt_expr.expression);
             }
-            if (stmt instanceof Stmt.Print) {
-                Expr expr = ((Stmt.Print)stmt).expression;
-                System.out.print("Ast Print: ");
-                AstPrinter.print(expr);
+            if (Lox.REPL && stmt instanceof Stmt.Print print_stmt) {
+                System.out.print(print_stmt.newline ? "Ast Println: " : "Ast Print: ");
+                AstPrinter.print(print_stmt.expression);
             }
         }
 

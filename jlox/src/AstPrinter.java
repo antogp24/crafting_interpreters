@@ -34,6 +34,11 @@ class AstPrinter implements Expr.Visitor<String> {
     }
 
     @Override
+    public String visit_logical_expr(Expr.Logical expr) {
+        return parenthesize(expr.operator.lexeme, expr.left, expr.right);
+    }
+
+    @Override
     public String visit_ternary_expr(Expr.Ternary expr) {
         final Expr colon = new Expr.Literal(":");
         return parenthesize("?", expr.condition, expr.if_true, colon, expr.otherwise);

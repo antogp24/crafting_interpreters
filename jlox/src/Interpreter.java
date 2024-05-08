@@ -5,6 +5,7 @@ import java.util.List;
 class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     private Environment environment = new Environment();
+    private boolean broke = false;
 
     void interpret(List<Stmt> statements) {
         try {
@@ -44,6 +45,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
             this.environment = environment;
             for (Stmt stmt : statements) {
                 execute(stmt);
+                if (this.broke) break;
             }
         } finally {
             this.environment = previous;
@@ -53,14 +55,20 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     @Override
     public Void visit_expression_stmt(Stmt.Expression stmt) {
         Object value = evaluate(stmt.expression);
-        System.out.println(stringify(value));
+        if (Lox.REPL) {
+            String first_part = "expression statement '" + stmt.expression + "' has a value of '";
+            System.out.println(first_part + stringify(value) + "'.");
+        }
         return null;
     }
 
     @Override
     public Void visit_print_stmt(Stmt.Print stmt) {
         Object value = evaluate(stmt.expression);
-        System.out.println(stringify(value));
+        if (stmt.newline)
+            System.out.println(stringify(value));
+        else
+            System.out.print(stringify(value));
         return null;
     }
 
@@ -77,6 +85,35 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Void visit_if_stmt(Stmt.If stmt) {
+        Object condition = evaluate(stmt.condition);
+        if (is_truthy(condition)) {
+            execute(stmt.then_branch);
+        } else if (stmt.else_branch != null) {
+            execute(stmt.else_branch);
+        }
+        return null;
+    }
+
+    @Override
+    public Void visit_break_stmt(Stmt.Break stmt) {
+        this.broke = true;
+        return null;
+    }
+
+    @Override
+    public Void visit_while_stmt(Stmt.While stmt) {
+        while (is_truthy(evaluate(stmt.condition))) {
+            execute(stmt.body);
+            if (this.broke) {
+                this.broke = false;
+                break;
+            }
+        }
+        return null;
+    }
+
+    @Override
     public Void visit_block_stmt(Stmt.Block stmt) {
         execute_block(stmt.statements, new Environment(environment));
         return null;
@@ -84,6 +121,9 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     @Override
     public Object visit_literal_expr(Expr.Literal expr) {
+        if (expr.value instanceof String str) {
+            return str.translateEscapes();
+        }
         return expr.value;
     }
 
@@ -115,7 +155,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
             }
             case BITWISE_NOT: {
                 check_number_operand(expr.operator, right);
-                return ~((long)(double)right);
+                return (double)~((long)(double)right);
             }
         }
         return null;
@@ -127,9 +167,12 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     private boolean is_truthy(Object value) {
-        if (value == null) return false;
-        if (value instanceof Boolean) return (boolean)value;
-        return true;
+        return switch (value) {
+            case null -> false;
+            case Number number -> (double)number != 0;
+            case Boolean bool -> bool;
+            default -> true;
+        };
     }
 
     @Override
@@ -193,36 +236,44 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
             case BITWISE_AND: {
                 check_number_operands(left, expr.operator, right);
-                Double a = (double)left, b = (double)right;
-                Long result = a.longValue() & b.longValue();
-                return result.doubleValue();
+                return (double)((long)(double)left & (long)(double)right);
             }
             case BITWISE_OR: {
                 check_number_operands(left, expr.operator, right);
-                Double a = (double)left, b = (double)right;
-                Long result = a.longValue() | b.longValue();
-                return result.doubleValue();
+                return (double)((long)(double)left | (long)(double)right);
             }
             case BITWISE_XOR: {
                 check_number_operands(left, expr.operator, right);
-                Double a = (double)left, b = (double)right;
-                Long result = a.longValue() ^ b.longValue();
-                return result.doubleValue();
+                return (double)((long)(double)left ^ (long)(double)right);
             }
             case LEFT_SHIFT: {
                 check_number_operands(left, expr.operator, right);
-                Double a = (double)left, b = (double)right;
-                Long result = a.longValue() << b.longValue();
-                return result.doubleValue();
+                return (double)((long)(double)left << (long)(double)right);
             }
             case RIGHT_SHIFT: {
                 check_number_operands(left, expr.operator, right);
-                Double a = (double)left, b = (double)right;
-                Long result = a.longValue() >> b.longValue();
-                return result.doubleValue();
+                return (double)((long)(double)left >> (long)(double)right);
             }
         }
         return null;
+    }
+
+    @Override
+    public Object visit_logical_expr(Expr.Logical expr) {
+        Object left = evaluate(expr.left);
+        Object right = evaluate(expr.right);
+
+        boolean a = is_truthy(left), b = is_truthy(right);
+
+        switch (expr.operator.type) {
+            case OR: {
+                if (a) return true;
+            }
+            case AND: {
+                if (!a) return false;
+            }
+            default: return b;
+        }
     }
 
     private void check_number_operands(Object a, Token operator, Object b) {
