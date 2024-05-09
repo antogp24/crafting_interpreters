@@ -3,7 +3,7 @@ package src;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
@@ -30,14 +30,14 @@ public class Lox {
 
     private static void run_file(String path) throws IOException {
         byte[] bytes = Files.readAllBytes(Paths.get(path));
-        run(new String(bytes, Charset.defaultCharset()));
+        run(new String(bytes, StandardCharsets.UTF_8));
 
         if (had_error) System.exit(65);
         if (had_runtime_error) System.exit(70);
     }
 
     private static void run_prompt() throws IOException {
-        InputStreamReader input = new InputStreamReader(System.in);
+        InputStreamReader input = new InputStreamReader(System.in, StandardCharsets.UTF_8);
         BufferedReader reader = new BufferedReader(input);
 
         while (true) {

@@ -53,7 +53,7 @@ public class Scanner {
     }
 
     void scan_token() {
-        char c = advance();
+        int c = advance();
 
         switch (c) {
             case '(': add_token(LEFT_PAREN); break;
@@ -118,24 +118,24 @@ public class Scanner {
                 } else if (is_alpha(c)) {
                     scan_identifier();
                 } else {
-                    Lox.error(line, "Unexpected character.");
+                    Lox.error(line, "Unexpected codepoint '" + c + "'.");
                 }
             break;
         }
     }
 
-    char peek() {
+    int peek() {
         if (current >= source.length()) return '\0';
-        return source.charAt(current);
+        return source.codePointAt(current);
     }
 
-    char peek_next() {
+    int peek_next() {
         if (current + 1 >= source.length()) return '\0';
-        return source.charAt(current + 1);
+        return source.codePointAt(current + 1);
     }
 
-    char advance() {
-        char c = source.charAt(current);
+    int advance() {
+        int c = source.codePointAt(current);
         current += 1;
         return c;
     }
@@ -157,17 +157,18 @@ public class Scanner {
         return true;
     }
 
-    boolean is_digit(char c) {
+    boolean is_digit(int c) {
         return c >= '0' && c <= '9';
     }
 
-    boolean is_alpha(char c) {
+    boolean is_alpha(int c) {
         return (c >= 'a' && c <= 'z') ||
                (c >= 'A' && c <= 'Z') ||
-               (c == '_');
+               (c == '_') ||
+                Character.isAlphabetic(c);
     }
 
-    boolean is_alpha_numeric(char c) {
+    boolean is_alpha_numeric(int c) {
         return is_digit(c) || is_alpha(c);
     }
 

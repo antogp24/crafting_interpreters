@@ -80,7 +80,11 @@ class Parser {
     private Stmt for_statement() {
         this.loop_level += 1;
 
-        if (check(LEFT_PAREN)) advance();
+        boolean has_optional_parenthesis = false;
+        if (check(LEFT_PAREN)) {
+            has_optional_parenthesis = true;
+            advance();
+        }
 
         Stmt initializer;
         if (match(SEMICOLON)) {
@@ -102,7 +106,8 @@ class Parser {
             increment = parse_expression();
         }
 
-        if (check(RIGHT_PAREN)) advance();
+        if (has_optional_parenthesis)
+            consume(RIGHT_PAREN, "Parenthesis are optional in the for statement, remove the trailing ')' or add the missing '('.");
 
         switch (peek().type) {
             case LEFT_BRACE: break;
