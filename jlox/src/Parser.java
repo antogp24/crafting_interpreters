@@ -77,13 +77,26 @@ class Parser {
         return new Stmt.Break();
     }
 
+    private void expect_do_or_block(String type) {
+        switch (peek().type) {
+            case LEFT_BRACE: break;
+            case DO: {
+                advance();
+                if (peek().type == LEFT_BRACE) {
+                    throw this.error(peek(), "Expected single statement after 'do' in " + type + ".");
+                }
+            } break;
+            default: throw this.error(peek(), "Expected '{' or 'do' after " + type + ".");
+        }
+    }
+
     private Stmt for_statement() {
         this.loop_level += 1;
 
         boolean has_optional_parenthesis = false;
         if (check(LEFT_PAREN)) {
-            has_optional_parenthesis = true;
             advance();
+            has_optional_parenthesis = true;
         }
 
         Stmt initializer;
@@ -106,19 +119,12 @@ class Parser {
             increment = parse_expression();
         }
 
-        if (has_optional_parenthesis)
-            consume(RIGHT_PAREN, "Parenthesis are optional in the for statement, remove the trailing ')' or add the missing '('.");
-
-        switch (peek().type) {
-            case LEFT_BRACE: break;
-            case DO: {
-                advance();
-                if (peek().type == LEFT_BRACE) {
-                    throw this.error(peek(), "Expected single statement after 'do' in for loop.");
-                }
-            } break;
-            default: throw this.error(peek(), "Expected '{' or 'do' after loop increment '" + increment + "'.");
+        if (has_optional_parenthesis) {
+            consume(RIGHT_PAREN, "Parenthesis are optional in the for statement: " +
+                    "remove the trailing ')' or add the missing '('.");
         }
+
+        expect_do_or_block("for loop");
 
         Stmt body = statement();
         if (body instanceof Stmt.Block block_stmt) {
@@ -150,16 +156,7 @@ class Parser {
         this.loop_level += 1;
 
         Expr condition = parse_expression();
-        switch (peek().type) {
-            case LEFT_BRACE: break;
-            case DO: {
-                advance();
-                if (peek().type == LEFT_BRACE) {
-                    throw this.error(peek(), "Expected single statement after 'do' in while loop.");
-                }
-            } break;
-            default: throw this.error(peek(), "Expected '{' or 'do' after while loop.");
-        }
+        expect_do_or_block("while loop");
         Stmt body = statement();
         if (body instanceof Stmt.Block block_body) {
             body = new Stmt.Block(block_body.statements);
@@ -171,24 +168,30 @@ class Parser {
 
     private Stmt if_statement() {
         Expr condition = parse_expression();
-        switch (peek().type) {
-            case LEFT_BRACE: break;
-            case DO: {
-                advance();
-                if (peek().type == LEFT_BRACE) {
-                    throw this.error(peek(), "Expected single statement after 'do' in if statement.");
-                }
-            } break;
-            default: throw this.error(peek(), "Expected '{' or 'do' after the if statement.");
-        }
+        expect_do_or_block("if statement");
         Stmt then_branch = statement();
+
+        List<Else_If> else_ifs = new ArrayList<>();
+        while (check(ELSE)) {
+            if (peek_next().type == IF) {
+                current += 2;
+                Expr else_if_condition = parse_expression();
+                expect_do_or_block("else-if part of the if statement");
+                Stmt else_if_then_branch = statement();
+                Else_If else_if = new Else_If(else_if_condition, else_if_then_branch);
+                else_ifs.add(else_if);
+            } else {
+                break;
+            }
+        }
 
         Stmt else_branch = null;
         if (match(ELSE)) {
+            expect_do_or_block("else part of the if statement");
             else_branch = statement();
         }
 
-        return new Stmt.If(condition, then_branch, else_branch);
+        return new Stmt.If(condition, then_branch, else_ifs, else_branch);
     }
 
     private Stmt print_statement() {
@@ -298,12 +301,12 @@ class Parser {
     }
 
     private Expr comparison() {
-        Expr expr = bitwise_comparison();
+        Expr expr = bitwise_ops();
 
         boolean is_comparison = false;
         while (match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL)) {
             Token operator = previous();
-            Expr right = bitwise_comparison();
+            Expr right = bitwise_ops();
             expr = new Expr.Binary(expr, operator, right);
             is_comparison = true;
         }
@@ -313,7 +316,7 @@ class Parser {
         return expr;
     }
 
-    private Expr bitwise_comparison() {
+    private Expr bitwise_ops() {
         Expr expr = bitwise_shift();
 
         while (match(BITWISE_XOR, BITWISE_OR, BITWISE_AND)) {
@@ -462,6 +465,10 @@ class Parser {
 
     private Token peek() {
         return this.tokens.get(current);
+    }
+
+    private Token peek_next() {
+        return this.tokens.get(current + 1);
     }
 
     private Token previous() {

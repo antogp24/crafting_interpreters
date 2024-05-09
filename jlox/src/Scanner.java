@@ -178,10 +178,11 @@ public class Scanner {
             if (peek() == '\\') {
                 current += 1;
                 switch (peek()) {
+                    case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
                     case 't': case 'b': case 'n': case 'r': case 'f': case '\'': case '\"': case '\\':
                         break;
                     default:
-                        Lox.error(line, "Unrecognized escape sequence \\" + peek() + ".");
+                        Lox.error(line, "Unrecognized escape sequence \\" + (char)peek() + ".");
                 }
             }
             current += 1;

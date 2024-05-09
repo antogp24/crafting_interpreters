@@ -1,0 +1,13 @@
+var emojis = "🩴🦶🏻🍥";
+var ñañito = "mi niño";
+var さくら = "桜です";
+var 你好 = "中国人";
+var блять = "русский";
+var scheiße = "haufen scheiße";
+
+println emojis;
+println ñañito;
+println さくら;
+println 你好;
+println блять;
+println scheiße;

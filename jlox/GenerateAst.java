@@ -28,6 +28,7 @@ public class GenerateAst {
             "Block       : List<Stmt> statements",
             "Expression  : Expr expression",
             "If          : Expr condition, Stmt then_branch," +
+                         " List<Else_If> else_ifs," +
                          " Stmt else_branch",
             "Print       : Expr expression, boolean newline",
             "Var         : Token name, Expr initializer",

@@ -43,9 +43,10 @@ abstract class Stmt {
 	}
 
 	static class If extends Stmt {
-		If(Expr condition, Stmt then_branch, Stmt else_branch) {
+		If(Expr condition, Stmt then_branch, List<Else_If> else_ifs, Stmt else_branch) {
 			this.condition = condition;
 			this.then_branch = then_branch;
+			this.else_ifs = else_ifs;
 			this.else_branch = else_branch;
 		}
 
@@ -56,6 +57,7 @@ abstract class Stmt {
 
 		final Expr condition;
 		final Stmt then_branch;
+		final List<Else_If> else_ifs;
 		final Stmt else_branch;
 	}
 

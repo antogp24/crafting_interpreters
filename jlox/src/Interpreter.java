@@ -89,8 +89,17 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         Object condition = evaluate(stmt.condition);
         if (is_truthy(condition)) {
             execute(stmt.then_branch);
-        } else if (stmt.else_branch != null) {
-            execute(stmt.else_branch);
+        } else {
+            boolean matched = false;
+            for (Else_If else_if : stmt.else_ifs) {
+                Object else_if_condition = evaluate(else_if.condition);
+                if (is_truthy(else_if_condition)) {
+                    execute(else_if.then_branch);
+                    matched = true;
+                    break;
+                }
+            }
+            if (stmt.else_branch != null && !matched) execute(stmt.else_branch);
         }
         return null;
     }

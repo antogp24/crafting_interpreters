@@ -1,0 +1,81 @@
+
+// Declarations.
+// --------------------------------------------------------------------------------------------------------- //
+
+program     → declaration* EOF ;
+
+declaration → var_decl
+            | statement;
+
+var_decl → "var" IDENTIFIER ( "=" expression )? ";";
+
+
+// Statements.
+// --------------------------------------------------------------------------------------------------------- //
+
+stmt_except_block → break_stmt
+                  | expr_stmt
+                  | for_stmt
+                  | if_stmt
+                  | print_stmt
+                  | println_stmt
+                  | return_stmt
+                  | while_stmt;
+
+statement → stmt_except_block | block_stmt;
+
+expr_stmt → expression ";";
+
+do_or_block → "do" stmt_except_block | block_stmt;
+
+for_stmt → "for" (var_decl | expr_stmt | ";") (expression | ";") (expression | ";") do_or_block;
+for_stmt → "for" "(" (var_decl | expr_stmt | ";") (expression | ";") (expression | ";") ")" do_or_block;
+
+while_stmt → "while" expression do_or_block;
+
+if_stmt → "if" expression do_or_block
+          ("else if" expression do_or_block)*
+          ("else" do_or_block)? ;
+
+print_stmt → "print" expression ";" ;
+println_stmt → "println" expression ";" ;
+
+block_stmt → "{" declaration* "}" ;
+
+
+// Expressions.
+// --------------------------------------------------------------------------------------------------------- //
+
+or  -> "or"  | "||";
+and -> "and" | "&&";
+
+expression     → comma_operator;
+comma_operator → assignment ("," assignment)* ;
+assignment     → IDENTIFIER "=" assignment ";"
+               | logical_or;
+logical_or     → logic_and (or logical_and)* ;
+logical_and    → equality (and equality)* ;
+equality       → comparison ( ("!=" | "==") comparison)* ;
+comparison     → bitwise_ops ( ("<" | ">" | "<=" | ">=") bitwise_ops)* ;
+bitwise_ops    → bitwise_shift ( ("^" | "|" | "&") bitwise_shift)* ;
+bitwise_shift  → term ( ("<<" | ">>") term)* ;
+term           → factor ("+" | "-") factor;
+factor         → unary  ("*" | "/") unary;
+unary          → ("!" | "-" | "~") unary | call;
+call           → primary ("(" arguments? ")" | "." IDENTIFIER)* ;
+primary        → "true" | "false" | "nil"
+               | NUMBER | STRING | IDENTIFIER | "(" expression ")" ;
+
+arguments  → expression ( "," expression)? ;
+parameters → IDENTIFIER ( "," IDENTIFIER)? ;
+
+
+// Lexical Grammar.
+// --------------------------------------------------------------------------------------------------------- //
+
+NUMBER     → DIGIT+ ( "." DIGIT+ )?;
+STRING     → "\"" (<any utf8 char>)* "\"";
+IDENTIFIER → ALPHA ( ALPHA | DIGIT )*;
+ALPHA      → "a" .. "z" | "A" .. "Z" | "_" | <any utf8 char from a human language>;
+DIGIT      → "0" .. "9";
+

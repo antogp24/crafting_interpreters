@@ -1,12 +1,18 @@
+// number of columns and rows.
 var n = 4;
 
 println n + "x" + n + " matrix:";
 
+/* colors */
+var cyan = "\033[96m";
+var red = "\033[31m";
+var reset = "\033[0m";
+
 for var j = 0; j < n; j = j + 1 {
-    print "[ ";
+    print red + "[ " + reset;
     for var i = 0; i < n; i = i + 1 {
-        var slot = (i == j) ? "1" : "0";
+        var slot = i == j ? cyan + "1" + reset : "0";
         print slot + " ";
     }
-    print "]\n";
+    print red + "]\n" + reset;
 }
