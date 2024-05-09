@@ -167,12 +167,10 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     private boolean is_truthy(Object value) {
-        return switch (value) {
-            case null -> false;
-            case Number number -> (double)number != 0;
-            case Boolean bool -> bool;
-            default -> true;
-        };
+        if (value == null) return false;
+        if (value instanceof Number) return (double)value != 0;
+        if (value instanceof Boolean) return (boolean)value;
+        return true;
     }
 
     @Override
