@@ -16,24 +16,29 @@ public class GenerateAst {
         define_ast(out_dir, "Expr", Arrays.asList(
             "Assign   : Token name, Expr value",
             "Binary   : Expr left, Token operator, Expr right",
-            "Ternary  : Expr condition, Expr if_true, Expr otherwise",
+            "Call     : Expr callee, Token paren, List<Expr> arguments",
             "Grouping : Expr expression",
+            "Lambda   : List<Token> params, List<Stmt> statements",
             "Literal  : Object value",
             "Logical  : Expr left, Token operator, Expr right",
+            "Ternary  : Expr condition, Expr if_true, Expr otherwise",
             "Unary    : Token operator, Expr right",
-            "Variable : Token name"
+            "Variable : Token name, boolean function"
         ));
 
         define_ast(out_dir, "Stmt", Arrays.asList(
             "Block       : List<Stmt> statements",
+            "Break       : ",
+            "Continue    : ",
             "Expression  : Expr expression",
+            "Function    : Token name, List<Token> params, List<Stmt> body",
             "If          : Expr condition, Stmt then_branch," +
                          " List<Else_If> else_ifs," +
                          " Stmt else_branch",
             "Print       : Expr expression, boolean newline",
+            "Return      : Token keyword, Expr value",
             "Var         : Token name, Expr initializer",
-            "While       : Expr condition, Stmt body",
-            "Break       : "
+            "While       : Expr condition, Stmt body, boolean has_increment"
         ));
     }
 

@@ -4,10 +4,14 @@
 
 program     → declaration* EOF ;
 
-declaration → var_decl
+declaration → fun_decl
+            | var_decl
             | statement;
 
 var_decl → "var" IDENTIFIER ( "=" expression )? ";";
+fun_decl → "fun" IDENTIFIER "(" parameters? ")" block;
+
+parameters → IDENTIFIER ("," IDENTIFIER)* ;
 
 
 // Statements.
@@ -28,6 +32,8 @@ expr_stmt → expression ";";
 
 do_or_block → "do" stmt_except_block | block_stmt;
 
+block_stmt → "{" declaration* "}" ;
+
 for_stmt → "for" (var_decl | expr_stmt | ";") (expression | ";") (expression | ";") do_or_block;
 for_stmt → "for" "(" (var_decl | expr_stmt | ";") (expression | ";") (expression | ";") ")" do_or_block;
 
@@ -40,7 +46,7 @@ if_stmt → "if" expression do_or_block
 print_stmt → "print" expression ";" ;
 println_stmt → "println" expression ";" ;
 
-block_stmt → "{" declaration* "}" ;
+return_stmt → "return" expression? ";" ;
 
 
 // Expressions.
@@ -62,7 +68,8 @@ bitwise_shift  → term ( ("<<" | ">>") term)* ;
 term           → factor ("+" | "-") factor;
 factor         → unary  ("*" | "/") unary;
 unary          → ("!" | "-" | "~") unary | call;
-call           → primary ("(" arguments? ")" | "." IDENTIFIER)* ;
+call           → lambda ("(" arguments? ")" | "." IDENTIFIER)* ;
+lambda         → primary | "fn" "(" arguments? ")" "{" statement* "}" ;
 primary        → "true" | "false" | "nil"
                | NUMBER | STRING | IDENTIFIER | "(" expression ")" ;
 

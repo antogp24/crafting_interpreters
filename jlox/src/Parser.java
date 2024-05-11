@@ -36,12 +36,35 @@ class Parser {
 
     private Stmt declaration() {
         try {
+            if (match(FUN)) return fun_declaration();
             if (match(VAR)) return var_declaration();
             return statement();
         } catch (ParseError error) {
             synchronize();
             return null;
         }
+    }
+
+    private Stmt fun_declaration() {
+        Token name = consume(IDENTIFIER, "Expected function name.");
+        List<Token> params = new ArrayList<>();
+
+        consume(LEFT_PAREN, "Expected '(' after function name");
+        if (!check(RIGHT_PAREN)) {
+            do {
+                if (params.size() >= 255) {
+                    this.error(peek(), "Can't have more than 255 parameters.");
+                }
+                Token param_name = consume(IDENTIFIER, "Expected parameter name.");
+                params.add(param_name);
+            } while (match(COMMA));
+        }
+        consume(RIGHT_PAREN, "Expected ')' in the function declaration.");
+
+        consume(LEFT_BRACE, "Expected '{' in the function declaration.");
+        List<Stmt> body = block_statement();
+
+        return new Stmt.Function(name, params, body);
     }
 
     private Stmt var_declaration() {
@@ -60,11 +83,23 @@ class Parser {
         if (match(IF)) return if_statement();
         if (match(WHILE)) return while_statement();
         if (match(FOR)) return for_statement();
+        if (match(CONTINUE)) return continue_statement();
         if (match(BREAK)) return break_statement();
         if (match(PRINT)) return print_statement();
         if (match(PRINTLN)) return println_statement();
-        if (match(LEFT_BRACE)) return block_statement();
+        if (match(RETURN)) return return_statement();
+        if (match(LEFT_BRACE)) return new Stmt.Block(block_statement());
         return expression_statement();
+    }
+
+    private Stmt continue_statement() {
+        if (this.loop_level == 0) {
+            String message = "Can't use continue statement outside a loop.";
+            if (Lox.REPL) this.error(previous(), message);
+            else Lox.error(previous(), message);
+        }
+        consume(SEMICOLON, "Expected ';' after continue statement.");
+        return new Stmt.Continue();
     }
 
     private Stmt break_statement() {
@@ -127,9 +162,6 @@ class Parser {
         expect_do_or_block("for loop");
 
         Stmt body = statement();
-        if (body instanceof Stmt.Block block_stmt) {
-            body = new Stmt.Block(block_stmt.statements);
-        }
 
         if (increment != null) {
             Stmt.Expression inc_stmt = new Stmt.Expression(increment);
@@ -141,7 +173,7 @@ class Parser {
         }
 
         if (condition == null) condition = new Expr.Literal(true);
-        body = new Stmt.While(condition, body);
+        body = new Stmt.While(condition, body, increment != null);
 
         if (initializer != null) {
             body = new Stmt.Block(Arrays.asList(initializer, body));
@@ -158,12 +190,9 @@ class Parser {
         Expr condition = parse_expression();
         expect_do_or_block("while loop");
         Stmt body = statement();
-        if (body instanceof Stmt.Block block_body) {
-            body = new Stmt.Block(block_body.statements);
-        }
 
         this.loop_level -= 1;
-        return new Stmt.While(condition, body);
+        return new Stmt.While(condition, body, false);
     }
 
     private Stmt if_statement() {
@@ -195,15 +224,25 @@ class Parser {
     }
 
     private Stmt print_statement() {
-        Expr value = expression();
+        Expr value = parse_expression();
         consume(SEMICOLON, "Expected ';' after the printed value.");
         return new Stmt.Print(value, false);
     }
 
     private Stmt println_statement() {
-        Expr value = expression();
+        Expr value = parse_expression();
         consume(SEMICOLON, "Expected ';' after the printed value.");
         return new Stmt.Print(value, true);
+    }
+
+    private Stmt return_statement() {
+        Token keyword = previous();
+        Expr value = null;
+        if (!check(SEMICOLON)) {
+            value = parse_expression();
+        }
+        consume(SEMICOLON, "Expected ';' after the return statement.");
+        return new Stmt.Return(keyword, value);
     }
 
     private Stmt expression_statement() {
@@ -212,13 +251,13 @@ class Parser {
         return new Stmt.Expression(value);
     }
 
-    private Stmt.Block block_statement() {
+    private List<Stmt> block_statement() {
         List<Stmt> statements = new ArrayList<>();
         while (!check(RIGHT_BRACE) && !is_at_end()) {
             statements.add(declaration());
         }
         consume(RIGHT_BRACE, "Expected '}' to end the block statement.");
-        return new Stmt.Block(statements);
+        return statements;
     }
 
     private Expr expression() {
@@ -373,7 +412,33 @@ class Parser {
             return expr;
         }
 
-        return primary();
+        return call();
+    }
+
+    private Expr call() {
+        Expr expr = primary();
+
+        while (true) {
+            if (match(LEFT_PAREN)) {
+                List<Expr> arguments = new ArrayList<>();
+                if (!check(RIGHT_PAREN)) {
+                    do {
+                        if (arguments.size() >= 255) {
+                            this.error(peek(), "Can't have more than 255 arguments.");
+                        }
+                        // Always call 1 level of precedence above the comma operator.
+                        Expr argument_expr = assignment();
+                        arguments.add(argument_expr);
+                    } while (match(COMMA));
+                }
+                Token paren = consume(RIGHT_PAREN, "Expect ')' after function call.");
+                expr = new Expr.Call(expr, paren, arguments);
+            } else {
+                break;
+            }
+        }
+
+        return expr;
     }
 
     private Expr primary() {
@@ -386,7 +451,8 @@ class Parser {
         }
 
         if (match(IDENTIFIER)) {
-            return new Expr.Variable(previous());
+            boolean is_function = (peek().type == LEFT_PAREN);
+            return new Expr.Variable(previous(), is_function);
         }
 
         if (match(LEFT_PAREN)) {

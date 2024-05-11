@@ -1,0 +1,38 @@
+fun fib(n) {
+    if n <= 1 do return n;
+    return fib(n - 2) + fib(n - 1);
+}
+
+for var i = 0; i < 20; i = i + 1 {
+    print fib(i) + " ";
+}
+print "\n";
+
+fun make_counter() {
+    var i = 0;
+    fun count() {
+        i = i + 1;
+        print i + " ";
+    }
+    return count;
+}
+
+fun thrice(fn) {
+    for var i = 1; i <= 3; i = i + 1 {
+        fn(i);
+    }
+}
+
+fun p(x) { print x + " "; }
+
+var counter = make_counter();
+println counter;
+
+print "counter: ";
+for var i = 0; i < 5; i = i + 1 do counter();
+print "\n";
+
+print "thrice: ";
+thrice(p);
+print "\n";
+

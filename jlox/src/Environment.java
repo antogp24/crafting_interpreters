@@ -15,18 +15,24 @@ public class Environment {
         this.enclosing = enclosing;
     }
 
+    boolean find(Token name) {
+        if (values.containsKey(name.lexeme)) return true;
+        if (enclosing != null) return enclosing.find(name);
+        return false;
+    }
+
     Object get(Token name) {
         if (values.containsKey(name.lexeme)) {
             Object value = values.get(name.lexeme);
             if (value instanceof UninitializedValue) {
-                throw new RuntimeLoxError(name, "Can't access uninitialized variable '" + name.lexeme  + "'.");
+                throw new LoxRuntimeError(name, "Can't access uninitialized variable '" + name.lexeme  + "'.");
             }
             return value;
         }
 
         if (enclosing != null) return enclosing.get(name);
 
-        throw new RuntimeLoxError(name, "Undefined variable '" + name.lexeme  + "'.");
+        throw new LoxRuntimeError(name, "Undefined variable '" + name.lexeme  + "'.");
     }
 
     void define(String name, Object value) {
@@ -44,6 +50,6 @@ public class Environment {
             return;
         }
 
-        throw new RuntimeLoxError(name, "Undefined variable '" + name.lexeme + "'.");
+        throw new LoxRuntimeError(name, "Undefined variable '" + name.lexeme + "'.");
     }
 }

@@ -1,5 +1,7 @@
 package src;
 
+import java.util.ArrayList;
+
 class AstPrinter implements Expr.Visitor<String> {
 
     static void print(Expr expr) {
@@ -34,6 +36,12 @@ class AstPrinter implements Expr.Visitor<String> {
     }
 
     @Override
+    public String visit_call_expr(Expr.Call expr) {
+        Expr[] arguments = expr.arguments.toArray(new Expr[0]);
+        return parenthesize("call:" + expr.callee.toString(), arguments);
+    }
+
+    @Override
     public String visit_logical_expr(Expr.Logical expr) {
         return parenthesize(expr.operator.lexeme, expr.left, expr.right);
     }
@@ -47,6 +55,17 @@ class AstPrinter implements Expr.Visitor<String> {
     @Override
     public String visit_grouping_expr(Expr.Grouping expr) {
         return parenthesize("grouping", expr.expression);
+    }
+
+    @Override
+    public String visit_lambda_expr(Expr.Lambda expr) {
+        if (expr.params.isEmpty()) return "(lambda)";
+
+        StringBuilder params = new StringBuilder();
+        for (Token param : expr.params) {
+            params.append(param.lexeme).append(" ");
+        }
+        return "(lambda " + params.toString() + ")";
     }
 
     @Override
@@ -67,6 +86,7 @@ class AstPrinter implements Expr.Visitor<String> {
 
     @Override
     public String visit_variable_expr(Expr.Variable expr) {
-        return "(var " + expr.name.lexeme + ")";
+        String type = expr.function ? "(fn " : "(var ";
+        return type + expr.name.lexeme + ")";
     }
 }

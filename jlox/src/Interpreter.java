@@ -1,18 +1,41 @@
 package src;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
-    private Environment environment = new Environment();
+    final Environment globals = new Environment();
+    private Environment environment = globals;
     private boolean broke = false;
+    private boolean continued = false;
+
+    Interpreter() {
+        globals.define("clock", new LoxCallable() {
+            @Override
+            public int arity() {
+                return 0;
+            }
+
+            @Override
+            public Object call(Interpreter interpreter, List<Object> arguments) {
+                return (double)System.currentTimeMillis() / 1000.0;
+            }
+
+            @Override
+            public String toString() {
+                return "<native fn clock>";
+            }
+        });
+    }
 
     void interpret(List<Stmt> statements) {
         try {
             for (Stmt stmt : statements) {
                 execute(stmt);
             }
-        } catch (RuntimeLoxError error) {
+        } catch (LoxRuntimeError error) {
             Lox.runtime_error(error);
         }
     }
@@ -39,13 +62,13 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         stmt.accept(this);
     }
 
-    private void execute_block(List<Stmt> statements, Environment environment) {
+    public void execute_block(List<Stmt> statements, Environment environment) {
         Environment previous = this.environment;
         try {
             this.environment = environment;
             for (Stmt stmt : statements) {
+                if (this.broke || this.continued) break;
                 execute(stmt);
-                if (this.broke) break;
             }
         } finally {
             this.environment = previous;
@@ -63,6 +86,18 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Void visit_function_stmt(Stmt.Function stmt) {
+        if (environment.find(stmt.name)) {
+            String message = "Function name '" + stmt.name.lexeme + "' is already in use.";
+            throw new LoxRuntimeError(stmt.name, message);
+        }
+
+        LoxFunction function = new LoxFunction(stmt, environment);
+        environment.define(stmt.name.lexeme, function);
+        return null;
+    }
+
+    @Override
     public Void visit_print_stmt(Stmt.Print stmt) {
         Object value = evaluate(stmt.expression);
         if (stmt.newline)
@@ -70,6 +105,13 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         else
             System.out.print(stringify(value));
         return null;
+    }
+
+    @Override
+    public Void visit_return_stmt(Stmt.Return stmt) {
+        Object value = null;
+        if (stmt.value != null) value = evaluate(stmt.value);
+        throw new LoxReturn(value);
     }
 
     @Override
@@ -111,12 +153,23 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Void visit_continue_stmt(Stmt.Continue stmt) {
+        this.continued = true;
+        return null;
+    }
+
+    @Override
     public Void visit_while_stmt(Stmt.While stmt) {
         while (is_truthy(evaluate(stmt.condition))) {
             execute(stmt.body);
             if (this.broke) {
                 this.broke = false;
                 break;
+            }
+            if (this.continued) {
+                this.continued = false;
+                if (stmt.body instanceof Stmt.Block block && stmt.has_increment)
+                    execute(block.statements.getLast());
             }
         }
         return null;
@@ -125,6 +178,13 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     @Override
     public Void visit_block_stmt(Stmt.Block stmt) {
         execute_block(stmt.statements, new Environment(environment));
+        return null;
+    }
+
+    @Override
+    public Object visit_lambda_expr(Expr.Lambda expr) {
+        Stmt.Function fn = new Stmt.Function(null, expr.params, expr.statements);
+        LoxFunction function = new LoxFunction(fn, environment);
         return null;
     }
 
@@ -172,7 +232,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     private void check_number_operand(Token operator, Object operand) {
         if (operand instanceof Number) return;
-        throw new RuntimeLoxError(operator, "Operand must be a number.");
+        throw new LoxRuntimeError(operator, "Operand must be a number.");
     }
 
     private boolean is_truthy(Object value) {
@@ -190,6 +250,29 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Object visit_call_expr(Expr.Call expr) {
+        Object callee = evaluate(expr.callee);
+
+        List<Object> arguments = new ArrayList<>();
+        for (Expr argument : expr.arguments) {
+            Object value = evaluate(argument);
+            arguments.add(value);
+        }
+
+        if (!(callee instanceof LoxCallable function)) {
+            throw new LoxRuntimeError(expr.paren,
+                    "Can only call functions and classes.");
+        }
+
+        if (arguments.size() != function.arity()) {
+            String message = "Expected " + function.arity() + " arguments but found " + arguments.size() + ".";
+            throw new LoxRuntimeError(expr.paren, message);
+        }
+
+        return function.call(this, arguments);
+    }
+
+    @Override
     public Object visit_binary_expr(Expr.Binary expr) {
         Object left = evaluate(expr.left);
         Object right = evaluate(expr.right);
@@ -202,7 +285,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
             case SLASH: {
                 check_number_operands(left, expr.operator, right);
                 if ((double)right == 0)
-                    throw new RuntimeLoxError(expr.operator, "Can't divide by zero.");
+                    throw new LoxRuntimeError(expr.operator, "Can't divide by zero.");
                 return (double)left / (double)right;
             }
             case MINUS: {
@@ -218,7 +301,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
                     return (String)left + stringify(right);
                 if (left instanceof Number && right instanceof String)
                     return stringify(left) + (String)right;
-                throw new RuntimeLoxError(expr.operator, "Operands must be both numbers or either one of them a string.");
+                throw new LoxRuntimeError(expr.operator, "Operands must be both numbers or either one of them a string.");
             }
 
             case GREATER: {
@@ -285,7 +368,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     private void check_number_operands(Object a, Token operator, Object b) {
         if (a instanceof Number && b instanceof Number) return;
-        throw new RuntimeLoxError(operator, "Operands must be numbers.");
+        throw new LoxRuntimeError(operator, "Operands must be numbers.");
     }
 
     private boolean is_equal(Object a, Object b) {

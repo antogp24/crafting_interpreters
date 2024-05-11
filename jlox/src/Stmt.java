@@ -6,12 +6,15 @@ abstract class Stmt {
 
 	interface Visitor<R> {
 		R visit_block_stmt(Block stmt);
+		R visit_break_stmt(Break stmt);
+		R visit_continue_stmt(Continue stmt);
 		R visit_expression_stmt(Expression stmt);
+		R visit_function_stmt(Function stmt);
 		R visit_if_stmt(If stmt);
 		R visit_print_stmt(Print stmt);
+		R visit_return_stmt(Return stmt);
 		R visit_var_stmt(Var stmt);
 		R visit_while_stmt(While stmt);
-		R visit_break_stmt(Break stmt);
 	}
 
 	abstract <R> R accept(Visitor<R> visitor);
@@ -29,6 +32,28 @@ abstract class Stmt {
 		final List<Stmt> statements;
 	}
 
+	static class Break extends Stmt {
+		Break() {
+		}
+
+		@Override
+		<R> R accept(Visitor<R> visitor) {
+			return visitor.visit_break_stmt(this);
+		}
+
+	}
+
+	static class Continue extends Stmt {
+		Continue() {
+		}
+
+		@Override
+		<R> R accept(Visitor<R> visitor) {
+			return visitor.visit_continue_stmt(this);
+		}
+
+	}
+
 	static class Expression extends Stmt {
 		Expression(Expr expression) {
 			this.expression = expression;
@@ -40,6 +65,23 @@ abstract class Stmt {
 		}
 
 		final Expr expression;
+	}
+
+	static class Function extends Stmt {
+		Function(Token name, List<Token> params, List<Stmt> body) {
+			this.name = name;
+			this.params = params;
+			this.body = body;
+		}
+
+		@Override
+		<R> R accept(Visitor<R> visitor) {
+			return visitor.visit_function_stmt(this);
+		}
+
+		final Token name;
+		final List<Token> params;
+		final List<Stmt> body;
 	}
 
 	static class If extends Stmt {
@@ -76,6 +118,21 @@ abstract class Stmt {
 		final boolean newline;
 	}
 
+	static class Return extends Stmt {
+		Return(Token keyword, Expr value) {
+			this.keyword = keyword;
+			this.value = value;
+		}
+
+		@Override
+		<R> R accept(Visitor<R> visitor) {
+			return visitor.visit_return_stmt(this);
+		}
+
+		final Token keyword;
+		final Expr value;
+	}
+
 	static class Var extends Stmt {
 		Var(Token name, Expr initializer) {
 			this.name = name;
@@ -92,9 +149,10 @@ abstract class Stmt {
 	}
 
 	static class While extends Stmt {
-		While(Expr condition, Stmt body) {
+		While(Expr condition, Stmt body, boolean has_increment) {
 			this.condition = condition;
 			this.body = body;
+			this.has_increment = has_increment;
 		}
 
 		@Override
@@ -104,16 +162,6 @@ abstract class Stmt {
 
 		final Expr condition;
 		final Stmt body;
-	}
-
-	static class Break extends Stmt {
-		Break() {
-		}
-
-		@Override
-		<R> R accept(Visitor<R> visitor) {
-			return visitor.visit_break_stmt(this);
-		}
-
+		final boolean has_increment;
 	}
 }
