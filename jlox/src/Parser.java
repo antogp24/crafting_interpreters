@@ -36,7 +36,13 @@ class Parser {
 
     private Stmt declaration() {
         try {
-            if (match(FUN)) return fun_declaration();
+            if (match(FUN)) {
+                if (check(LEFT_PAREN)) {
+                    current--;
+                    return expression_statement();
+                }
+                return fun_declaration();
+            }
             if (match(VAR)) return var_declaration();
             return statement();
         } catch (ParseError error) {
@@ -416,7 +422,7 @@ class Parser {
     }
 
     private Expr call() {
-        Expr expr = primary();
+        Expr expr = lambda();
 
         while (true) {
             if (match(LEFT_PAREN)) {
@@ -439,6 +445,32 @@ class Parser {
         }
 
         return expr;
+    }
+
+    private Expr lambda() {
+        if (match(FUN)) {
+            Token token = previous();
+            List<Token> params = new ArrayList<>();
+
+            consume(LEFT_PAREN, "Expected '(' after 'fun' in lambda.");
+            if (!check(RIGHT_PAREN)) {
+                do {
+                    if (params.size() >= 255) {
+                        this.error(peek(), "Can't have more than 255 parameters.");
+                    }
+                    Token param_name = consume(IDENTIFIER, "Expected parameter name.");
+                    params.add(param_name);
+                } while (match(COMMA));
+            }
+            consume(RIGHT_PAREN, "Expected ')' after parameters in lambda.");
+
+            consume(LEFT_BRACE, "Expected '{' after ')' in lambda.");
+            List<Stmt> statements = block_statement();
+
+            return new Expr.Lambda(token, params, statements);
+        }
+
+        return primary();
     }
 
     private Expr primary() {
@@ -491,13 +523,16 @@ class Parser {
 
             switch (peek().type) {
                 case CLASS:
+                case CONTINUE:
+                case BREAK:
                 case FUN:
-                case VAR:
                 case FOR:
                 case IF:
-                case WHILE:
                 case PRINT:
+                case PRINTLN:
                 case RETURN:
+                case VAR:
+                case WHILE:
                     return;
             }
 

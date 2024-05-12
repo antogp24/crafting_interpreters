@@ -183,9 +183,8 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     @Override
     public Object visit_lambda_expr(Expr.Lambda expr) {
-        Stmt.Function fn = new Stmt.Function(null, expr.params, expr.statements);
-        LoxFunction function = new LoxFunction(fn, environment);
-        return null;
+        Stmt.Function fn = new Stmt.Function(expr.token, expr.params, expr.statements);
+        return new LoxFunction(fn, environment);
     }
 
     @Override

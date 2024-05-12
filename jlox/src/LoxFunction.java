@@ -33,6 +33,7 @@ class LoxFunction implements LoxCallable {
 
     @Override
     public String toString() {
+        if (declaration.name.type == TokenType.FUN) return "<lambda>";
         return "<fn " + declaration.name.lexeme + ">";
     }
 }
