@@ -1,13 +1,16 @@
 package src;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.List;
 
 class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     final Environment globals = new Environment();
     private Environment environment = globals;
+    private final Map<Expr, Integer> locals = new HashMap<>();
+
     private boolean broke = false;
     private boolean continued = false;
 
@@ -60,6 +63,10 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     private void execute(Stmt stmt) {
         stmt.accept(this);
+    }
+
+    void resolve(Expr expr, int depth) {
+        locals.put(expr, depth);
     }
 
     public void execute_block(List<Stmt> statements, Environment environment) {
@@ -183,7 +190,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     @Override
     public Object visit_lambda_expr(Expr.Lambda expr) {
-        Stmt.Function fn = new Stmt.Function(expr.token, expr.params, expr.statements);
+        Stmt.Function fn = new Stmt.Function(expr.token, expr.params, expr.body);
         return new LoxFunction(fn, environment);
     }
 
@@ -202,7 +209,15 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     @Override
     public Object visit_variable_expr(Expr.Variable expr) {
-        return environment.get(expr.name);
+        return lookup_variable(expr.name, expr);
+    }
+
+    private Object lookup_variable(Token name, Expr expr) {
+        Integer distance = locals.get(expr);
+        if (distance != null) {
+            return environment.get_at(distance, name.lexeme);
+        }
+        return globals.get(name);
     }
 
     @Override
@@ -244,7 +259,14 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     @Override
     public Object visit_assign_expr(Expr.Assign expr) {
         Object value = evaluate(expr.value);
-        environment.assign(expr.name, value);
+
+        Integer distance = locals.get(expr);
+        if (distance != null) {
+            environment.assign_at(distance, expr.name, value);
+        } else {
+            globals.assign(expr.name, value);
+        }
+
         return value;
     }
 

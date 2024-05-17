@@ -21,6 +21,19 @@ public class Environment {
         return false;
     }
 
+    Environment ancestor(int distance) {
+        Environment environment = this;
+        for (int i = 0; i < distance; i++) {
+            assert environment != null;
+            environment = environment.enclosing;
+        }
+        return environment;
+    }
+
+    Object get_at(int distance, String name) {
+        return ancestor(distance).values.get(name);
+    }
+
     Object get(Token name) {
         if (values.containsKey(name.lexeme)) {
             Object value = values.get(name.lexeme);
@@ -37,6 +50,10 @@ public class Environment {
 
     void define(String name, Object value) {
         values.put(name, value);
+    }
+
+    void assign_at(int distance, Token name, Object value) {
+        ancestor(distance).values.put(name.lexeme, value);
     }
 
     void assign(Token name, Object value) {

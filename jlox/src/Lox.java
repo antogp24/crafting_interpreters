@@ -82,6 +82,11 @@ public class Lox {
             }
         }
 
+        Resolver resolver = new Resolver(interpreter);
+        resolver.resolve_statements(statements);
+
+        if (had_error) return;
+
         interpreter.interpret(statements);
     }
     
