@@ -9,6 +9,20 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     private final Interpreter interpreter;
     private final Stack<Map<String, Boolean>> scopes = new Stack<>();
     private FunctionType current_fn = FunctionType.NONE;
+    private ClassType current_class = ClassType.NONE;
+
+    private enum FunctionType {
+        NONE,
+        FUNCTION,
+        LAMBDA,
+        INITIALIZER,
+        METHOD,
+    }
+
+    private enum ClassType {
+        NONE,
+        CLASS,
+    }
 
     Resolver(Interpreter interpreter) {
         this.interpreter = interpreter;
@@ -99,19 +113,23 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         declare(function.name);
         define(function.name);
 
+        resolve_function(function.params, function.body, FunctionType.FUNCTION);
+        return null;
+    }
+
+    private void resolve_function(List<Token> params, List<Stmt> body, FunctionType type) {
         FunctionType enclosing_fn = current_fn;
-        current_fn = FunctionType.FUNCTION;
+        current_fn = type;
 
         begin_scope();
-        for (Token param : function.params) {
+        for (Token param : params) {
             declare(param);
             define(param);
         }
-        resolve_statements(function.body);
+        resolve_statements(body);
         end_scope();
 
         current_fn = enclosing_fn;
-        return null;
     }
 
     @Override
@@ -158,6 +176,25 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Void visit_class_stmt(Stmt.Class stmt) {
+        ClassType enclosing_class = current_class;
+        current_class = ClassType.CLASS;
+
+        declare(stmt.name);
+        define(stmt.name);
+
+        begin_scope();
+        scopes.peek().put("this", true);
+        for (Stmt.Function method : stmt.methods) {
+            resolve_function(method.params, method.body, FunctionType.METHOD);
+        }
+        end_scope();
+        current_class = enclosing_class;
+
+        return null;
+    }
+
+    @Override
     public Void visit_expression_stmt(Stmt.Expression stmt) {
         resolve_expr(stmt.expression);
         return null;
@@ -180,6 +217,12 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Void visit_get_expr(Expr.Get expr) {
+        resolve_expr(expr.object);
+        return null;
+    }
+
+    @Override
     public Void visit_grouping_expr(Expr.Grouping expr) {
         resolve_expr(expr.expression);
         return null;
@@ -187,18 +230,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visit_lambda_expr(Expr.Lambda lambda) {
-        FunctionType enclosing_fn = current_fn;
-        current_fn = FunctionType.LAMBDA;
-
-        begin_scope();
-        for (Token param : lambda.params) {
-            declare(param);
-            define(param);
-        }
-        resolve_statements(lambda.body);
-        end_scope();
-
-        current_fn = enclosing_fn;
+        resolve_function(lambda.params, lambda.body, FunctionType.LAMBDA);
         return null;
     }
 
@@ -211,6 +243,23 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     public Void visit_logical_expr(Expr.Logical expr) {
         resolve_expr(expr.left);
         resolve_expr(expr.right);
+        return null;
+    }
+
+    @Override
+    public Void visit_set_expr(Expr.Set expr) {
+        resolve_expr(expr.object);
+        resolve_expr(expr.value);
+        return null;
+    }
+
+    @Override
+    public Void visit_this_expr(Expr.This expr) {
+        if (current_class == ClassType.NONE) {
+            Lox.error(expr.keyword, "Can't use 'this' outside of class.");
+            return null;
+        }
+        resolve_local(expr, expr.keyword);
         return null;
     }
 

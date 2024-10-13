@@ -43,6 +43,7 @@ class Parser {
                 }
                 return fun_declaration();
             }
+            if (match(CLASS)) return class_declaration();
             if (match(VAR)) return var_declaration();
             return statement();
         } catch (ParseError error) {
@@ -51,7 +52,7 @@ class Parser {
         }
     }
 
-    private Stmt fun_declaration() {
+    private Stmt.Function fun_declaration() {
         Token name = consume(IDENTIFIER, "Expected function name.");
         List<Token> params = new ArrayList<>();
 
@@ -73,7 +74,27 @@ class Parser {
         return new Stmt.Function(name, params, body);
     }
 
-    private Stmt var_declaration() {
+    private Stmt class_declaration() {
+        Token name = consume(IDENTIFIER, "Expect class name.");
+        List<Stmt.Var> attributes = new ArrayList<>();
+        List<Stmt.Function> methods = new ArrayList<>();
+
+        consume(LEFT_BRACE, "Expect '{' in class declaration");
+        while (!check(RIGHT_BRACE) && !is_at_end()) {
+            if (match(VAR)) {
+                attributes.add(var_declaration());
+            } else if (match(FUN)) {
+                methods.add(fun_declaration());
+            } else {
+                this.error(peek(), "Expected variable and/or function declarations");
+            }
+        }
+        consume(RIGHT_BRACE, "Expect '}' in class declaration");
+
+        return new Stmt.Class(name, attributes, methods);
+    }
+
+    private Stmt.Var var_declaration() {
         Token name = consume(IDENTIFIER, "Expect variable name.");
         Expr initializer = null;
 
@@ -287,9 +308,10 @@ class Parser {
             Token equals = previous();
             Expr value = assignment();
 
-            if (expr instanceof Expr.Variable) {
-                Token name = ((Expr.Variable)expr).name;
-                return new Expr.Assign(name, value);
+            if (expr instanceof Expr.Variable variable) {
+                return new Expr.Assign(variable.name, value);
+            } else if (expr instanceof Expr.Get get) {
+                return new Expr.Set(get.object, get.name, value);
             }
 
             this.error(equals, "Invalid assignment target '" + expr.toString() + "'.");
@@ -439,6 +461,9 @@ class Parser {
                 }
                 Token paren = consume(RIGHT_PAREN, "Expect ')' after function call.");
                 expr = new Expr.Call(expr, paren, arguments);
+            } else if (match(DOT)) {
+                Token name = consume(IDENTIFIER, "Expect property name after '.'");
+                expr = new Expr.Get(expr, name);
             } else {
                 break;
             }
@@ -481,6 +506,8 @@ class Parser {
         if (match(NUMBER, STRING)) {
             return new Expr.Literal(previous().literal);
         }
+
+        if (match(THIS)) return new Expr.This(previous());
 
         if (match(IDENTIFIER)) {
             boolean is_function = (peek().type == LEFT_PAREN);

@@ -47,9 +47,24 @@ class AstPrinter implements Expr.Visitor<String> {
     }
 
     @Override
+    public String visit_set_expr(Expr.Set expr) {
+        return "(" + to_string(expr.object) + "." + expr.name.lexeme + " = " + to_string(expr.value) + ")";
+    }
+
+    @Override
+    public String visit_this_expr(Expr.This expr) {
+        return "this";
+    }
+
+    @Override
     public String visit_ternary_expr(Expr.Ternary expr) {
         final Expr colon = new Expr.Literal(":");
         return parenthesize("?", expr.condition, expr.if_true, colon, expr.otherwise);
+    }
+
+    @Override
+    public String visit_get_expr(Expr.Get expr) {
+        return "(" + to_string(expr.object) + "." + expr.name.lexeme + ")";
     }
 
     @Override

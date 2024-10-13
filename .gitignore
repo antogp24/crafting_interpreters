@@ -1,3 +1,5 @@
+clox/bin/*
+
 jlox/bin/*
 jlox/out/*
 jlox/src/Expr.java

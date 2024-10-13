@@ -7,6 +7,7 @@ abstract class Stmt {
 	interface Visitor<R> {
 		R visit_block_stmt(Block stmt);
 		R visit_break_stmt(Break stmt);
+		R visit_class_stmt(Class stmt);
 		R visit_continue_stmt(Continue stmt);
 		R visit_expression_stmt(Expression stmt);
 		R visit_function_stmt(Function stmt);
@@ -41,6 +42,23 @@ abstract class Stmt {
 			return visitor.visit_break_stmt(this);
 		}
 
+	}
+
+	static class Class extends Stmt {
+		Class(Token name, List<Stmt.Var> attributes, List<Stmt.Function> methods) {
+			this.name = name;
+			this.attributes = attributes;
+			this.methods = methods;
+		}
+
+		@Override
+		<R> R accept(Visitor<R> visitor) {
+			return visitor.visit_class_stmt(this);
+		}
+
+		final Token name;
+		final List<Stmt.Var> attributes;
+		final List<Stmt.Function> methods;
 	}
 
 	static class Continue extends Stmt {

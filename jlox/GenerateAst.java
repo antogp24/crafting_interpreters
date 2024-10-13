@@ -17,10 +17,13 @@ public class GenerateAst {
             "Assign   : Token name, Expr value",
             "Binary   : Expr left, Token operator, Expr right",
             "Call     : Expr callee, Token paren, List<Expr> arguments",
+            "Get      : Expr object, Token name",
             "Grouping : Expr expression",
             "Lambda   : Token token, List<Token> params, List<Stmt> body",
             "Literal  : Object value",
             "Logical  : Expr left, Token operator, Expr right",
+            "Set      : Expr object, Token name, Expr value",
+            "This     : Token keyword",
             "Ternary  : Expr condition, Expr if_true, Expr otherwise",
             "Unary    : Token operator, Expr right",
             "Variable : Token name, boolean function"
@@ -29,6 +32,7 @@ public class GenerateAst {
         define_ast(out_dir, "Stmt", Arrays.asList(
             "Block       : List<Stmt> statements",
             "Break       : ",
+            "Class       : Token name, List<Stmt.Var> attributes, List<Stmt.Function> methods",
             "Continue    : ",
             "Expression  : Expr expression",
             "Function    : Token name, List<Token> params, List<Stmt> body",

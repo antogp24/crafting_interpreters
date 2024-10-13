@@ -166,6 +166,29 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Void visit_class_stmt(Stmt.Class stmt) {
+        environment.define(stmt.name.lexeme, null);
+        Map<String, LoxFunction> methods = new HashMap<>();
+        for (Stmt.Function method : stmt.methods) {
+            LoxFunction function = new LoxFunction(method, environment);
+            methods.put(method.name.lexeme, function);
+        }
+        Map<String, Object> fields = new HashMap<>();
+        for (Stmt.Var field : stmt.attributes) {
+            Object initializer;
+            if (field.initializer != null) {
+                initializer = evaluate(field.initializer);
+            } else {
+                initializer = new UninitializedValue();
+            }
+            fields.put(field.name.lexeme, initializer);
+        }
+        LoxClass lox_class = new LoxClass(stmt.name.lexeme, methods, fields);
+        environment.assign(stmt.name, lox_class);
+        return null;
+    }
+
+    @Override
     public Void visit_while_stmt(Stmt.While stmt) {
         while (is_truthy(evaluate(stmt.condition))) {
             execute(stmt.body);
@@ -200,6 +223,19 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
             return str.translateEscapes();
         }
         return expr.value;
+    }
+
+    @Override
+    public Object visit_get_expr(Expr.Get expr) {
+        Object object = evaluate(expr.object);
+        if (object instanceof LoxInstance instance) {
+            Object value = instance.get(expr.name);
+            if (value instanceof UninitializedValue) {
+                throw new LoxRuntimeError(expr.name, "Can't access uninitialized value.");
+            }
+            return value;
+        }
+        throw new LoxRuntimeError(expr.name, "Only instances have properties.");
     }
 
     @Override
@@ -387,6 +423,17 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         }
     }
 
+    @Override
+    public Object visit_set_expr(Expr.Set expr) {
+        Object value = evaluate(expr.value);
+        Object object = evaluate(expr.object);
+        if (object instanceof LoxInstance instance) {
+            instance.set(expr.name, value);
+            return value;
+        }
+        throw new LoxRuntimeError(expr.name, "Expect instance for the setter.");
+    }
+
     private void check_number_operands(Object a, Token operator, Object b) {
         if (a instanceof Number && b instanceof Number) return;
         throw new LoxRuntimeError(operator, "Operands must be numbers.");
@@ -396,6 +443,11 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         if (a == null && b == null) return true;
         if (a == null || b == null) return false;
         return a.equals(b);
+    }
+
+    @Override
+    public Object visit_this_expr(Expr.This expr) {
+        return lookup_variable(expr.keyword, expr);
     }
 
     @Override
