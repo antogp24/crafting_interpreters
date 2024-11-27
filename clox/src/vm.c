@@ -1,11 +1,14 @@
 #include "vm.h"
 #include "compiler.h"
+#include "object.h"
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdarg.h>
 #include <assert.h>
 
-static VM vm;
+VM vm;
 
 #define IP_INDEX ((uint32_t)(vm.ip - vm.chunk->code))
 #define RESET_STACK() do { vm.stack_top = vm.stack; } while(0)
@@ -27,6 +30,23 @@ static void runtime_error(const char *format, ...) {
 
 void vm_init() {
     RESET_STACK();
+    hash_table_init(&vm.intern_strings);
+    vm.allocated_objects = NULL;
+}
+
+static void vm_concatenate_last_two_strings_and_push() {
+    Object_String* b = AS_STRING(vm_stack_pop());
+    Object_String* a = AS_STRING(vm_stack_pop());
+    
+    uint32_t length = a->length + b->length;
+    char* items = (char*)malloc(length+1);
+    memcpy(items          , a->items, a->length);
+    memcpy(items+a->length, b->items, b->length);
+    items[length] = '\0';
+    
+    uint32_t hash = hash_string(items, length);
+    Object_String* result = object_string_allocate(items, length, hash, false);
+    vm_stack_push(VALUE_OBJECT(result));
 }
 
 static Interpret_Result run() {
@@ -55,7 +75,19 @@ static Interpret_Result run() {
         
         switch (instruction = READ_BYTE())
         {
-            case OP_ADD:       BINARY_OP(+, VALUE_NUMBER); break;
+            case OP_ADD: {
+                if (IS_STRING(vm_stack_peek(0)) && IS_STRING(vm_stack_peek(1))) {
+                    vm_concatenate_last_two_strings_and_push();
+                } else if (IS_NUMBER(vm_stack_peek(0)) && IS_NUMBER(vm_stack_peek(1))) {
+                    double b = AS_NUMBER(vm_stack_pop());
+                    double a = AS_NUMBER(vm_stack_pop());
+                    vm_stack_push(VALUE_NUMBER(a + b));
+                } else {
+                    runtime_error("Operands must be two numbers or two strings.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+            } break;
+            
             case OP_SUBSTRACT: BINARY_OP(-, VALUE_NUMBER); break;
             case OP_MULTIPLY:  BINARY_OP(*, VALUE_NUMBER); break;
             case OP_DIVIDE:    BINARY_OP(/, VALUE_NUMBER); break;
@@ -169,4 +201,14 @@ Value vm_stack_pop() {
 }
 
 void vm_destroy() {
+    // Free all the allocated objects
+    Object* object = vm.allocated_objects;
+    while (object != NULL) {
+        Object *next = object->next;
+        object_free(object);
+        object = next;
+    }
+    vm.allocated_objects = NULL;
+    
+    hash_table_destroy(&vm.intern_strings);
 }

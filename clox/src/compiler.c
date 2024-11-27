@@ -1,6 +1,8 @@
 #include "compiler.h"
 #include "scanner.h"
 #include "chunk.h"
+#include "object.h"
+
 #include <stdio.h>
 #include <math.h>
 #include <stdarg.h>
@@ -13,6 +15,7 @@ static void grouping(Parser*);
 static void unary(Parser*);
 static void binary(Parser*);
 static void number(Parser*);
+static void string(Parser*);
 static void literal(Parser*);
 
 static void parser_error_at(Parser* parser, Token* token, const char *message);
@@ -49,7 +52,7 @@ const ParseRule rules[] = {
   [TOKEN_LESS]          = {NULL,     binary, PREC_COMPARISON},
   [TOKEN_LESS_EQUAL]    = {NULL,     binary, PREC_COMPARISON},
   [TOKEN_IDENTIFIER]    = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_STRING]        = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_STRING]        = {string,   NULL,   PREC_NONE},
   [TOKEN_NUMBER]        = {number,   NULL,   PREC_NONE},
   [TOKEN_AND]           = {NULL,     NULL,   PREC_NONE},
   [TOKEN_CLASS]         = {NULL,     NULL,   PREC_NONE},
@@ -186,6 +189,16 @@ static void number(Parser* parser) {
     // The number has already been consumed.
     double value = atof(parser->previous.start);
     emit_constant(VALUE_NUMBER(value));
+}
+
+static void string(Parser* parser) {
+    // The string has already been consumed.
+    char* items = (char*)parser->previous.start + 1;
+    uint32_t length = parser->previous.length - 2;
+    uint32_t hash = hash_string(items, length);
+    
+    Object_String* str = object_string_allocate(items, length, hash, true);
+    emit_constant(VALUE_OBJECT(str));
 }
 
 static void grouping(Parser* parser) {

@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "chunk.h"
+#include "hash_table.h"
 
 typedef enum {
     INTERPRET_OK = 0,
@@ -18,7 +19,11 @@ typedef struct {
     uint8_t* ip;
     Value stack[STACK_MAX];
     Value* stack_top;
+    Object* allocated_objects;
+    Hash_Table intern_strings;
 } VM;
+
+extern VM vm;
 
 void vm_init();
 Interpret_Result vm_interpret(const char* source_code);
